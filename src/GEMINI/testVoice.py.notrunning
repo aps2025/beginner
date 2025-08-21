@@ -1,0 +1,37 @@
+import asyncio
+import soundfile as sf
+from google.generativeai import GenerativeModel, configure
+from google.generativeai.types import AudioInput, AudioResponse
+
+# Step 1: Configure API
+configure(api_key="AIzaSyCqIlp7mTSarIsucoFy7snPp1uweso6T5w")
+
+# Step 2: Load your audio input (16kHz mono WAV)
+audio_data, sample_rate = sf.read("input.wav")
+assert sample_rate == 16000, "Audio must be 16kHz mono"
+
+# Step 3: Initialize model
+model = GenerativeModel(model_name="gemini-2.5-flash-exp-native-audio-thinking-dialog")
+
+# Step 4: Start live session
+async def run_live_audio():
+    session = await model.start_live_session(
+        input_modality="audio",
+        response_modalities=["audio"]
+    )
+
+    # Send audio input
+    await session.send(AudioInput.from_numpy(audio_data, sample_rate=16000))
+
+    # Receive response
+    async for response in session:
+        if isinstance(response, AudioResponse):
+            with open("response.wav", "wb") as f:
+                f.write(response.audio.bytes)
+            print("✅ Response saved as response.wav")
+            break
+
+    await session.close()
+
+# Run the async loop
+asyncio.run(run_live_audio())
